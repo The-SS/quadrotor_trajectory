@@ -134,8 +134,7 @@ class SnapTrajectory:
                          [ y<m>, dy<m>, d2y<m>, d3y<m>, d4y<m> ],
                          [ z<m>, dz<m>, d2z<m>, d3z<m>, d4z<m> ],
                          [ psi<m>, dpsi<m>, d2psi<m> ],
-                         [t<m>]
-                         ]
+                         [t<m>]]
                          t0 must be set to zero
                          x0, y0, z0, psi0 and their derivatives represent the initial conditions
             '''
@@ -362,11 +361,11 @@ class SnapTrajectory:
                 plt.plot(t_all, traj_all)
         plt.show()
 
-    def output_csv(self):
+    def output_csv(self, file_name):
         '''
         outputs the optimization variables into a csv file
         '''
-        file = open('traj.csv', "wb")
+        file = open(file_name, "wb")
         wr = csv.writer(file, delimiter=',')
         description = ["duration, x^0, x^1, x^2, ..., x^n, y^0, y^1, y^2, ... y^n, z^0, z^1, z^2, ... z^n, yaw^0, yaw^1, yaw^2, ... yaw^n"]
         wr.writerow(description)
@@ -433,9 +432,9 @@ if __name__ == "__main__":
     w.append([0])
     w.append([8])
 
-    st.traj(w)
-    # st.traj_stepwise(w)
+    # st.traj(w)
+    st.traj_stepwise(w)
     st.plot_traj()
-    st.output_csv()
+    st.output_csv('traj.csv')
     # data = st.input_csv('cf_traj.csv') #TODO plot after input is not working
     # st.plot_traj()
