@@ -117,6 +117,7 @@ class SnapTrajectory:
     def traj_stepwise (self, waypoints):
             '''
             generates the trajectory between input Waypoints
+            starts each segment from t = 0 and ends at t = duration
             waypoints should be passed in the following format:
             waypoints = [[ x0, dx0, d2x0, d3x0, d4x0 ],
                          [ y0, dy0, d2y0, d3y0, d4y0 ],
@@ -362,9 +363,13 @@ class SnapTrajectory:
         plt.show()
 
     def output_csv(self):
-        #TODO: output variables to csv file
-        file = open('cf_traj.csv', "wb")
+        '''
+        outputs the optimization variables into a csv file
+        '''
+        file = open('traj.csv', "wb")
         wr = csv.writer(file, delimiter=',')
+        description = ["duration, x^0, x^1, x^2, ..., x^n, y^0, y^1, y^2, ... y^n, z^0, z^1, z^2, ... z^n, yaw^0, yaw^1, yaw^2, ... yaw^n"]
+        wr.writerow(description)
         for i in range(len(self.variables)/4):
             # print(len(self.variables)/4)
             coef = []
@@ -377,7 +382,7 @@ class SnapTrajectory:
         file.close()
 
     def input_csv(self, file_name):
-        data = np.loadtxt(file_name, delimiter=",", usecols=range(33))
+        data = np.loadtxt(file_name, delimiter=",", usecols=range(33)) #, skiprows = 1
         data_time = []
         data_coef =[]
         for i in range(len(data)):
@@ -387,115 +392,50 @@ class SnapTrajectory:
             data_time.append(data[i][0])
             data_coef.append(data[i][1:len(data[i])-1].tolist())
             data_coef[i].extend([0.0])
+
         self.timestamps = data_time
         self.variables = data_coef
         # data = np.loadtxt(file_name, delimiter=",")
         return (data_time, data_coef)
 
-    # def input_csv(self, file_name):
-    #     data = load_csv(file_name)
-
-
 
 
 if __name__ == "__main__":
     st = SnapTrajectory(7)
+
+    # Straight lines
     # w = [[0],[0],[0],[0],[0],  [1],[1],[1],[0],[4], [2],[2],[0],[0],[8]]
-    # w = [[2],[2],[3],[0],[0], [1],[0],[0],[0],[2]]
-    # w = [[0,0],[0,0],[0,0],[0,0],[0], [-1,0.5],[1,-0.5],[1,0.5],[0,0],[4], [0.5,0],[0.5,0],[0.5,0],[0,0],[8]]
-    # w = [[0,0],[0,0],[0,0],[0,0],[0], [1,0],[1,0],[1,0],[0,0],[1]]
-    # w = [[1,0],[1,0],[1,0],[0,0],[0], [2,0],[2,0],[2,0],[0,0],[1]]
-    # w = [[1,0],[1,0],[1,0],[0,0],[0], [0.5,0],[0.5,0],[0.5,0],[0,0],[1]]
-    # w = [[3],[2],[0],[0],[0],  [5],[5],[5],[5],[3]]
-    # w = [[0,0],[0,0],[0,0],[0,0],[0], [1,0],[1,0],[1,0],[1,0],[4], [0.,0.],[0.,0.],[0.,0.],[0.,0.],[8]]
+
     #Circle
-    w = [[0,0],[0,0],[0],[0],[0]]
+    w = [[0,-0.5],[0,0],[0],[0],[0]]
     #2
-    w.append([0.5,0])
     w.append([-0.5,0])
-    w.append([0.2])
+    w.append([0.5,0.5])
+    w.append([0])
     w.append([0])
     w.append([2])
     #3
-    w.append([-.5,0])
-    w.append([-0.5,0])
-    w.append([0.4])
+    w.append([0,0.5])
+    w.append([1.0,0])
+    w.append([0])
     w.append([0])
     w.append([4])
     #4
-    w.append([0,0])
-    w.append([-0.25,0])
-    w.append([0.5])
+    w.append([0.5,0])
+    w.append([0.5,-0.5])
+    w.append([0])
     w.append([0])
     w.append([6])
+    #5
+    w.append([0,0])
+    w.append([0,0])
+    w.append([0])
+    w.append([0])
+    w.append([8])
 
-
-
-    # st.traj(w)
-    st.traj_stepwise(w)
+    st.traj(w)
+    # st.traj_stepwise(w)
     st.plot_traj()
     st.output_csv()
-    # data = st.input_csv('traj_utd.csv')
-    # print('data_time',data[0])
-    # time = data[0]
-    # print('data_var', data[1])
-    # var = data[1]
+    # data = st.input_csv('cf_traj.csv') #TODO plot after input is not working
     # st.plot_traj()
-    #
-
-
-    # # rebuilding graph from csv file
-    # ts = 0;
-    # t_all = []
-    # traj_all_x = []
-    # traj_all_y = []
-    # traj_all_z = []
-    # traj_all_psi = []
-    # for i in range(len(time)):
-    #     t = np.linspace(ts, ts+time[i], num = 100, endpoint = False)
-    #     print('t0',ts)
-    #     ts += time[i]
-    #     print('t1',ts)
-    #     x = var[i][0:8]
-    #     print('x',x)
-    #     y = var[i][8:16]
-    #     print('y',y)
-    #     z = var[i][16:24]
-    #     print('z',z)
-    #     psi = var[i][24:32]
-    #     print('psi',psi)
-    #
-    #     traj_x = np.zeros(len(t))
-    #     traj_y = np.zeros(len(t))
-    #     traj_z = np.zeros(len(t))
-    #     traj_psi = np.zeros(len(t))
-    #
-    #     for k in range(len(t)):
-    #         t_poly = []
-    #         for d in range(7+1):
-    #             t_poly.append(t[k]**d)
-    #         traj_x[k] = np.dot(x, t_poly)
-    #         traj_y[k] = np.dot(y, t_poly)
-    #         traj_z[k] = np.dot(z, t_poly)
-    #         traj_psi[k] = np.dot(psi, t_poly)
-    #     t_all.extend(t)
-    #     traj_all_x.extend(traj_x)
-    #     traj_all_y.extend(traj_y)
-    #     traj_all_z.extend(traj_z)
-    #     traj_all_psi.extend(traj_psi)
-    #
-    # plt.figure(1)
-    # plt.title('Dr.Summers')
-    # plt.subplot(221)
-    # plt.title('x-pos')
-    # plt.plot(t_all, traj_all_x)
-    # plt.subplot(222)
-    # plt.title('y-pos')
-    # plt.plot(t_all, traj_all_y)
-    # plt.subplot(223)
-    # plt.title('z-pos')
-    # plt.plot(t_all, traj_all_z)
-    # plt.subplot(224)
-    # plt.title('psi')
-    # plt.plot(t_all, traj_all_psi)
-    # plt.show()
