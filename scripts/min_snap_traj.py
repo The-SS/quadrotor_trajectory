@@ -1,25 +1,3 @@
-#!/usr/bin/env python
-'''
-We generate the minimum snap trajectory between m waypoints
-Based on:
-Minimum Snap Trajectory Generation and Control for Quadrotors
-By
-Daniel Mellinger and Vijay Kumar
-Thru
-2011 IEEE International Conference on Robotics and Automation Shanghai International Conference Center
-May 9-13, 2011, Shanghai, China
-
-Author:
-Sleiman Safaoui
-git:
-The-SS
-Email:
-snsafaoui@gmail.com
-sleiman.safaoui@utdallas.edu
-
-Date:
-April 3, 2018
-'''
 from cvxpy import *
 import numpy as np
 import csv
@@ -107,12 +85,6 @@ class SnapTrajectory:
             zi[:] = zf[:] # store old destination z in current initial
             psii[:] = psif[:] # store old destination psi in current initial
             ti[0] = tf[0] # store old destination time in current initial
-            #print(xf,yf,zf,psif,tf)
-        #TODO: store data
-        print("Optimization Variables:")
-        print(self.variables)
-        print("Time:")
-        print(self.timestamps)
 
     def traj_stepwise (self, waypoints):
             '''
@@ -189,13 +161,9 @@ class SnapTrajectory:
                 zi[:] = zf[:] # store old destination z in current initial
                 psii[:] = psif[:] # store old destination psi in current initial
                 ti[0] = tf[0] # store old destination time in current initial
-                #print(xf,yf,zf,psif,tf)
-            #TODO: store data
-            print("Optimization Variables:")
-            print(self.variables)
-            print("Time:")
-            print(self.timestamps)
 
+
+ 
     def min_snap(self, ti, tf, wi, wf):
         '''
         generates minimum snap trajectories (used for position)
@@ -249,35 +217,24 @@ class SnapTrajectory:
             dt4_i[i] = i*(i-1)*(i-2)*(i-3)*ti**(i-4)
             dt4_f[i] = i*(i-1)*(i-2)*(i-3)*tf**(i-4)
         # finding the matrix H with all the constants: H = C*T_mat*C
-        H = np.matmul(C, np.matmul(T_mat, C))
-        # print("H",H)
-        # optimization
+        m = self.degree+1
+        H = Parameter((m, m), PSD=True)
+        H.value = C.T @ T_mat @ C
         V = Variable(self.degree+1) # optimization variables
-        objective = Minimize(quad_form(V,H)) #objective function see https://github.com/cvxr/CVX/blob/master/functions/quad_form.m
-        #constraints = [t_i*V == wi[0], dt1_i*V == wi[1], dt2_i*V == wi[2], dt3_i*V == wi[3], dt4_i*V == wi[4], t_f*V == wf[0], dt1_f*V == wf[1], dt2_f*V == wf[2], dt3_f*V == wf[3], dt4_f*V == wf[4]] # constraints
-        constraints = [t_i*V == wi[0], dt1_i*V == wi[1], t_f*V == wf[0], dt1_f*V == wf[1]] # constraints
+
+        A = np.array([t_i, dt1_i, t_f, dt1_f])
+        kkt = np.vstack((np.hstack([T_mat, A.T]),
+                        np.hstack([A, np.zeros((np.shape(A)[0], np.shape(A)[0]))])))
+        
+        c_vec = np.zeros(self.degree+1)
+        b_vec = np.array([wi[0], wi[1], wf[0], wf[1]])
+        vec = np.hstack([c_vec, b_vec])
+
+        objective = Minimize(quad_form(V, H)) 
+        constraints = [t_i @ V == wi[0], dt1_i @ V == wi[1], t_f @ V == wf[0], dt1_f @ V == wf[1]] # constraints
         prob = Problem(objective, constraints) # optimization problem
-        prob.solve(solver='SCS', eps=1e-12) # solving optimization problem
-
-        # analytical solution
-        # Q = np.zeros((self.degree+5, self.degree+5))
-        # A = np.zeros((4,self.degree+1))
-        # A[0,:] = [1., 0., 0., 0., 0., 0., 0., 0., 0.]
-        # A[1,:] = [0., 1., 0., 0., 0., 0., 0., 0., 0.]
-        # A[2,:] = [1., tf, tf**2., tf**3., tf**4., tf**5., tf**6., tf**7., tf**8.]
-        # A[3,:] = [0., tf, 2.*tf**1., 3.*tf**2., 4.*tf**3., 5.*tf**4., 6.*tf**5., 7.*tf**6., 8.*tf**7.]
-        # Q[0:self.degree+1, 0:self.degree+1] = 2*H
-        # Q[self.degree+1:self.degree+5, 0:self.degree+1] = A[:,:]
-        # Q[0:self.degree+1,self.degree+1:self.degree+5] = A.T
-        # B = np.zeros((13,1))
-        # B[9] = wi[0]
-        # B[10] = wi[1]
-        # B[11] = wf[0]
-        # B[12] = wf[1]
-        # X = np.linalg.inv(Q)*B
-        # print('X',X)
-
-        return np.array(V.value)[:,0]
+        prob.solve(solver='OSQP') # solving optimization problem
+        return np.array(V.value)
 
     def min_acc(self, ti, tf, wi, wf):
         '''
@@ -288,7 +245,7 @@ class SnapTrajectory:
             if i < 2:
                 pass
             else:
-                C[i,i] = math.factorial(i)/math.factorial(i-2)
+                C[i,i] = math.factorial(i)//math.factorial(i-2)
         # generating matrix of integral of time variables
         T_mat = np.zeros((self.degree+1,self.degree+1), dtype=float)
         for i in range(2,self.degree+1):
@@ -307,17 +264,19 @@ class SnapTrajectory:
             dt1_i[i] = i*ti**(i-1)
             dt1_f[i] = i*tf**(i-1)
         # finding the matrix H with all the constants: H = C.T_mat.C
-        H = np.matmul(C, np.matmul(T_mat, C))
+        H = C @ T_mat @ C
+        # Ensure H is symmetric
+        H = 0.5 * (H + H.T)
         # defining optimization vairables
         V = Variable(self.degree+1)
         # setting up the optimization problem
-        objective = Minimize(quad_form(V,H)) #see https://github.com/cvxr/CVX/blob/master/functions/quad_form.m
-        constraints = [t_i*V == wi[0], dt1_i*V == wi[1], t_f*V == wf[0], dt1_f*V == wf[1]] # constraints defined by waypoints
+        objective = Minimize(quad_form(V, H)) #see https://github.com/cvxr/CVX/blob/master/functions/quad_form.m
+        constraints = [t_i @ V == wi[0], dt1_i @ V == wi[1], t_f @ V == wf[0], dt1_f @ V == wf[1]] # constraints defined by waypoints
         prob = Problem(objective, constraints)
         #solving the optimization problem
         prob.solve(solver='SCS', eps=1e-12)
         # return results
-        return np.array(V.value)[:,0]
+        return np.array(V.value)
 
     def plot_traj(self):
         '''
@@ -365,18 +324,15 @@ class SnapTrajectory:
         '''
         outputs the optimization variables into a csv file
         '''
-        file = open(file_name, "wb")
+        file = open(file_name, "w", newline='') # updated to 'w' mode for text
         wr = csv.writer(file, delimiter=',')
         description = ["duration, x^0, x^1, x^2, ..., x^n, y^0, y^1, y^2, ... y^n, z^0, z^1, z^2, ... z^n, yaw^0, yaw^1, yaw^2, ... yaw^n"]
         wr.writerow(description)
-        for i in range(len(self.variables)/4):
-            # print(len(self.variables)/4)
+        for i in range(len(self.variables)//4):
             coef = []
             coef.append(self.timestamps[i+1]-self.timestamps[i])
             for j in range(4):
-                # print('idx',4*i+j)
                 coef.extend(self.variables[4*i+j].tolist())
-            # print('coef',coef)
             wr.writerow(coef)
         file.close()
 
@@ -385,9 +341,6 @@ class SnapTrajectory:
         data_time = []
         data_coef =[]
         for i in range(len(data)):
-            print(data[i])
-            print('00000',data[i][0])
-            print('cooooef', data[i][1:len(data[i])-1])
             data_time.append(data[i][0])
             data_coef.append(data[i][1:len(data[i])-1].tolist())
             data_coef[i].extend([0.0])
@@ -397,15 +350,13 @@ class SnapTrajectory:
         # data = np.loadtxt(file_name, delimiter=",")
         return (data_time, data_coef)
 
-
-
 if __name__ == "__main__":
     st = SnapTrajectory(7)
 
     # Straight lines
     # w = [[0],[0],[0],[0],[0],  [1],[1],[1],[0],[4], [2],[2],[0],[0],[8]]
 
-    #Circle
+    # Circle
     w = [[0,-0.5],[0,0],[0],[0],[0]]
     #2
     w.append([-0.5,0])
@@ -436,5 +387,5 @@ if __name__ == "__main__":
     st.traj_stepwise(w)
     st.plot_traj()
     st.output_csv('traj.csv')
-    # data = st.input_csv('cf_traj.csv') #TODO plot after input is not working
+    # data = st.input_csv('cf_traj.csv')
     # st.plot_traj()

@@ -1,6 +1,6 @@
 # quadrotor_trajectory
 Generating minimum snap trajectories between waypoints for quadrotors
-The package has been tested on MacOS running Sierra 10.12.6
+The package has been tested on ~~MacOS running Sierra 10.12.6~~ Ubuntu 20.04.3 LTS with Python 3.10. See below for instructions on how to install and run the code. 
 
 ## Installing the package
 - Install cvxpy by following the guide at [this link](http://www.cvxpy.org/en/latest/install/index.html).
@@ -22,3 +22,36 @@ cd <path_to_quadrotor_trajectory>/scripts
 -  Use `st.traj(w)` or `st.traj_stepwise(w)`. `st.traj(w)` will generate the trajectories on intervals [t0,t1], [t1,t2], ... [t_(n-1), t_n]. `st.traj_stepwise(w)` generates the trajectories on intervals [0, t1-t0], [0, t2-t1], ... [0, t_n - t_(n-1)]. Do not use both.
 - To plot the trajectory use `st.plot_traj()`. If you used `st.traj(w)`, you will get a smooth trajectory. If you used `st.traj_stepwise(w)`, the trajectory will be discontinues at each waypoint
 - To output the optimization coefficients to a csv file use `st.output_csv('<file_name>')`. The csv file will appear in `quadrotor_trajectory/scripts`
+
+## Instructions to setup and run the code
+
+Install Python 3.10
+```bash
+sudo apt-get install python3.10-full
+```
+
+Install Venv Package
+```bash
+sudo apt-get install python3-venv
+```
+
+Create a virtual environment
+```bash
+python3.10 -m venv env
+```
+
+Activate the virtual environment
+```bash
+source env/bin/activate
+```
+
+Install the required packages
+```bash
+pip install -r requirements.txt
+```
+
+Run the code
+```bash
+cd scripts
+python min_snap_traj.py
+```
